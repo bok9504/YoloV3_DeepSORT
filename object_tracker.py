@@ -92,7 +92,7 @@ def main(_argv):
     fps = 0.0
     count = 0
     speed = 0
-    #frame_num = 0
+    frame_num = 0
 
     pointNum1 = (3555, 1101)
     pointNum4 = (1050, 564)
@@ -103,7 +103,7 @@ def main(_argv):
     real_len = calc_len(realPoint1, realPoint4)
 
     from _collections import deque
-    pts = [deque(maxlen=5) for _ in range(10000)]
+    pts = [deque(maxlen=percep_frame+1) for _ in range(10000)]
 
     while True:
         _, img = vid.read()
@@ -224,12 +224,15 @@ def main(_argv):
             cv2.rectangle(img, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*17, int(bbox[1])), color, -1)
             cv2.putText(img, class_name + "-" + str(track.track_id),(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255),2)
             
+            # 속도 추출
+            if len(pts[track.track_id]) == 0:
+                pts[track.track_id].append(frame_num)
             center = (int(((bbox[0]) + (bbox[2]))/2), int(((bbox[1]) + (bbox[3]))/2))
             pts[track.track_id].append(center)
-            if len(pts[track.track_id]) == percep_frame:
+            if len(pts[track.track_id]) == percep_frame + 1:
                 move_len = np.sqrt(pow(pts[track.track_id][-1][0] - pts[track.track_id][-percep_frame][0], 2) + pow(pts[track.track_id][-1][1] - pts[track.track_id][-percep_frame][1], 2))
                 realMove_Len = real_len * move_len / frame_len
-                speed = realMove_Len * FPS * 3.6 / percep_frame
+                speed = realMove_Len * FPS * 3.6 / (pts[track.track_id][0]-frame_num)
                 pts[track.track_id].clear()
             cv2.putText(img, " spd:" + str(int(speed)),(int(bbox[0]+(len(str(track.track_id)))*17+25), int(bbox[1]-10)),0, 0.5, (255,255,255),2)
         ## UNCOMMENT BELOW IF YOU WANT CONSTANTLY CHANGING YOLO DETECTIONS TO BE SHOWN ON SCREEN
@@ -253,7 +256,7 @@ def main(_argv):
                 for i in range(0,len(converted_boxes)):
                     list_file.write(str(converted_boxes[i][0]) + ' '+str(converted_boxes[i][1]) + ' '+str(converted_boxes[i][2]) + ' '+str(converted_boxes[i][3]) + ' ')
             list_file.write('\n')
-
+        frame_num += 1
         # press q to quit
         if cv2.waitKey(1) == ord('q'):
             break
